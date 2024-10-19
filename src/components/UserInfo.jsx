@@ -3,8 +3,9 @@ import { useState, useEffect } from "react";
 const UserInfo = () => {
   const [userInfo, setUserInfo] = useState({
     ipAddress: "Loading...",
-    approximateLocation: "Loading...",
+    ispLocation: "Loading...",
     preciseLocation: "Loading...",
+    latLong: "Loading...",
     deviceInfo: "Loading...",
     browserInfo: "Loading...",
     screenResolution: "Loading...",
@@ -13,11 +14,40 @@ const UserInfo = () => {
     connection: "Loading...",
     batteryLevel: "Loading...",
     orientation: "Loading...",
+    location: "Loading...",
   });
 
   useEffect(() => {
     const fetchUserInfo = async () => {
       try {
+        // Get precise location using GPS or nearest cell network
+        let preciseLocation = "Not available";
+        let latLong = "Not available";
+        if ("geolocation" in navigator) {
+          try {
+            const position = await new Promise((resolve, reject) => {
+              navigator.geolocation.getCurrentPosition(resolve, reject, {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 0,
+              });
+            });
+
+            // Use reverse geocoding to get a human-readable address
+            const response = await fetch(
+              `https://nominatim.openstreetmap.org/reverse?format=json&lat=${position.coords.latitude}&lon=${position.coords.longitude}&zoom=18&addressdetails=1`
+            );
+            const data = await response.json();
+
+            const address = data.display_name || "Address not found";
+            preciseLocation = `${address}`;
+            latLong = `${position.coords.latitude}, ${position.coords.longitude}`;
+          } catch (error) {
+            console.log("Error getting precise location:", error);
+            preciseLocation = "Error: Unable to retrieve location";
+          }
+        }
+
         // Fetch IP address and approximate location
         const ipResponse = await fetch("https://api.ipify.org?format=json");
         const ipData = await ipResponse.json();
@@ -31,19 +61,6 @@ const UserInfo = () => {
         const browserInfo = getBrowserInfo(userAgent);
         const deviceInfo = getDeviceInfo(userAgent);
 
-        // Get precise location if user allows
-        let preciseLocation = "Not available";
-        if ("geolocation" in navigator) {
-          try {
-            const position = await new Promise((resolve, reject) => {
-              navigator.geolocation.getCurrentPosition(resolve, reject);
-            });
-            preciseLocation = `Lat: ${position.coords.latitude}, Long: ${position.coords.longitude}`;
-          } catch (error) {
-            console.log("User denied Geolocation", error);
-          }
-        }
-
         // Get connection info
         let connection = "Not available";
         if ("connection" in navigator && navigator.connection) {
@@ -54,8 +71,19 @@ const UserInfo = () => {
         // Get battery info
         let batteryLevel = "Not available";
         if ("getBattery" in navigator) {
-          const battery = await navigator.getBattery();
-          batteryLevel = `${battery.level * 100}%`;
+          try {
+            const battery = await navigator.getBattery();
+            batteryLevel = `${battery.level * 100}%`;
+          } catch (error) {
+            console.log("Error getting battery info:", error);
+          }
+        } else if ("battery" in navigator) {
+          try {
+            const battery = await navigator.battery;
+            batteryLevel = `${battery.level * 100}%`;
+          } catch (error) {
+            console.log("Error getting battery info:", error);
+          }
         }
 
         // Get screen orientation
@@ -65,8 +93,9 @@ const UserInfo = () => {
 
         const newUserInfo = {
           ipAddress: ipData.ip,
-          approximateLocation: `${locationData.city}, ${locationData.region}, ${locationData.country_name}`,
+          ispL: `${locationData.city}, ${locationData.region}, ${locationData.country_name}`,
           preciseLocation,
+          latLong,
           deviceInfo,
           browserInfo,
           screenResolution: `${window.screen.width}x${window.screen.height}`,
@@ -77,6 +106,7 @@ const UserInfo = () => {
           orientation,
         };
 
+        console.log("Fetched user info:", newUserInfo);
         setUserInfo(newUserInfo);
       } catch (error) {
         console.error("Error fetching user info:", error);
@@ -84,7 +114,7 @@ const UserInfo = () => {
     };
 
     fetchUserInfo();
-  }, [userInfo]);
+  }, []);
 
   const getBrowserInfo = (userAgent) => {
     const browserRegexes = [
@@ -132,8 +162,9 @@ const UserInfo = () => {
     <div>
       <h2>User Information</h2>
       <p>IP Address: {userInfo.ipAddress}</p>
-      <p>Approximate Location: {userInfo.approximateLocation}</p>
+      <p>ISP Location: {userInfo.ispL}</p>
       <p>Precise Location: {userInfo.preciseLocation}</p>
+      <p>Lat-Long: {userInfo.latLong}</p>
       <p>Device: {userInfo.deviceInfo}</p>
       <p>Browser: {userInfo.browserInfo}</p>
       <p>Screen Resolution: {userInfo.screenResolution}</p>
