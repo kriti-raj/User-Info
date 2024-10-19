@@ -2,17 +2,17 @@ import { useState, useEffect } from "react";
 
 const UserInfo = () => {
   const [userInfo, setUserInfo] = useState({
-    ipAddress: "",
-    approximateLocation: "",
-    preciseLocation: "",
-    deviceInfo: "",
-    browserInfo: "",
-    screenResolution: "",
-    language: "",
-    timeZone: "",
-    connection: "",
-    batteryLevel: "",
-    orientation: "",
+    ipAddress: "Loading...",
+    approximateLocation: "Loading...",
+    preciseLocation: "Loading...",
+    deviceInfo: "Loading...",
+    browserInfo: "Loading...",
+    screenResolution: "Loading...",
+    language: "Loading...",
+    timeZone: "Loading...",
+    connection: "Loading...",
+    batteryLevel: "Loading...",
+    orientation: "Loading...",
   });
 
   useEffect(() => {
@@ -63,7 +63,7 @@ const UserInfo = () => {
           ? screen.orientation.type
           : "Not available";
 
-        setUserInfo({
+        const newUserInfo = {
           ipAddress: ipData.ip,
           approximateLocation: `${locationData.city}, ${locationData.region}, ${locationData.country_name}`,
           preciseLocation,
@@ -75,14 +75,16 @@ const UserInfo = () => {
           connection,
           batteryLevel,
           orientation,
-        });
+        };
+
+        setUserInfo(newUserInfo);
       } catch (error) {
         console.error("Error fetching user info:", error);
       }
     };
 
     fetchUserInfo();
-  }, []);
+  }, [userInfo]);
 
   const getBrowserInfo = (userAgent) => {
     const browserRegexes = [
